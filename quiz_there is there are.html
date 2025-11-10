@@ -3,268 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Sites 嵌入測試測驗</title>
-    <!-- 使用 Tailwind CSS CDN 來提供優美的響應式設計 -->
+    <title>There is/are 互動影片測驗</title>
+    <!-- 載入 Tailwind CSS 確保響應式設計和美觀 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 設定字體為 Inter (Google 推薦)，並確保內容在 iframe 中居中 */
+        /* 字體設定與整體居中 */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f7f7; /* 輕微的背景色 */
+            background-color: #f0f3f5;
             display: flex;
             justify-content: center;
-            align-items: center;
-            min-height: 100vh; /* 確保內容能填滿整個嵌入空間 */
-            margin: 0;
-            padding: 20px;
+            align-items: flex-start; /* 讓內容靠上 */
+            min-height: 100vh;
+            padding: 20px 10px;
         }
 
-        /* 主容器樣式 */
+        /* 測驗主容器 */
         .quiz-container {
-            max-width: 600px;
+            max-width: 700px;
             width: 100%;
             background-color: white;
-            padding: 30px;
-            border-radius: 12px; /* 圓角 */
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* 柔和的陰影 */
-            transition: all 0.3s ease;
+            padding: 25px;
+            border-radius: 14px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
         }
 
-        /* 影片容器 */
+        /* 影片外框 (16:9 比例) */
         .video-wrapper {
             position: relative;
-            padding-bottom: 56.25%; /* 16:9 比例 */
+            padding-bottom: 56.25%; 
             height: 0;
             overflow: hidden;
-            margin-bottom: 20px;
-            border-radius: 8px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
-        .video-wrapper iframe {
+        #player {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            border: 0;
         }
 
-        /* 答案選項按鈕樣式 */
-        .option-button {
+        /* 測驗彈窗遮罩 */
+        #quiz-overlay {
+            display: none; /* 預設隱藏 */
+            position: fixed; /* 固定在視窗上層 */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* 半透明遮罩 */
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 測驗內容區塊 */
+        .quiz-modal {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 90%;
+            width: 450px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* 答案選項按鈕 */
+        .option-btn {
             width: 100%;
             padding: 12px;
-            margin-bottom: 10px;
-            background-color: #f0f4f8; /* 淺灰色背景 */
-            color: #333;
-            border: 2px solid #e0e7ee;
+            margin: 8px 0;
+            border: 2px solid #e5e7eb;
             border-radius: 8px;
             text-align: left;
+            background-color: #f9fafb;
+            transition: all 0.2s;
+        }
+        .option-btn:hover:not(:disabled) {
+            background-color: #e0f2fe;
+            border-color: #38bdf8;
             cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 16px;
         }
-
-        .option-button:hover:not(:disabled) {
-            background-color: #dbeaff; /* 懸停時變藍 */
-            border-color: #93c5fd;
-        }
-
-        .option-button:disabled {
-            cursor: default;
-        }
-
+        
         /* 答題結果樣式 */
-        .correct {
-            background-color: #d1fae5; /* 綠色背景 */
-            border-color: #34d399;
-            font-weight: bold;
-        }
-
-        .incorrect {
-            background-color: #fee2e2; /* 紅色背景 */
-            border-color: #f87171;
-            font-weight: bold;
-        }
-
-        .feedback-box {
-            padding: 15px;
-            margin-top: 20px;
-            border-radius: 8px;
-            text-align: center;
+        .correct-answer {
+            background-color: #dcfce7; /* 淺綠 */
+            border-color: #22c55e; /* 綠色邊框 */
             font-weight: 600;
-            display: none; /* 預設隱藏 */
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
-        .feedback-correct {
-            background-color: #10b981; /* 綠色 */
-            color: white;
+        .incorrect-selection {
+            background-color: #fee2e2; /* 淺紅 */
+            border-color: #ef4444; /* 紅色邊框 */
+            opacity: 0.7;
         }
-        .feedback-incorrect {
-            background-color: #ef4444; /* 紅色 */
-            color: white;
+        
+        /* 動畫效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
 
 <div class="quiz-container">
-    <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Google Sites 嵌入測試測驗</h1>
+    <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-3">There is/are 互動測驗 (最終版)</h1>
+    <p class="text-sm text-gray-500 mb-6 text-center">影片將在關鍵語法點自動暫停，請回答問題以繼續。</p>
 
-    <!-- 嵌入 YouTube 影片 -->
+    <!-- YouTube Player 容器 -->
     <div class="video-wrapper">
-        <!-- **** 修正處：將 youtube.com 改為 youtube-nocookie.com 以提高嵌入相容性 **** -->
-        <iframe 
-            src="https://www.youtube-nocookie.com/embed/5qap5aO42Jc" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            referrerpolicy="strict-origin-when-cross-origin"
-            allowfullscreen>
-        </iframe>
+        <div id="player"></div>
     </div>
 
-    <div id="quiz-content">
-        <!-- 測驗題目將由 JavaScript 渲染到此處 -->
+    <!-- 影片載入中提示 -->
+    <div id="loading-msg" class="text-center text-blue-500 mt-4 p-3 bg-blue-50 rounded-lg">
+        🎬 影片載入中，請稍候...
     </div>
+</div>
 
-    <!-- 結果回饋區塊 -->
-    <div id="feedback" class="feedback-box"></div>
+<!-- 測驗彈窗 -->
+<div id="quiz-overlay">
+    <div class="quiz-modal">
+        <h3 class="text-xl font-bold text-gray-800 mb-4" id="quiz-question"></h3>
+        <div id="quiz-options">
+            <!-- 選項將由 JS 載入 -->
+        </div>
+        
+        <!-- 答案回饋與解析 -->
+        <div id="rationale-box" class="mt-4 p-3 bg-gray-100 border-l-4 border-gray-400 rounded-lg hidden">
+            <p class="font-semibold text-sm mb-1" id="feedback-result"></p>
+            <p class="text-sm text-gray-700" id="feedback-rationale"></p>
+        </div>
 
+        <!-- 繼續播放按鈕 -->
+        <button id="continue-btn" class="w-full mt-6 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 hidden" onclick="continueVideo()">
+            繼續播放影片
+        </button>
+    </div>
 </div>
 
 <script>
-    // 測驗資料結構
-    const quizData = [
+    // YouTube 影片 ID (您指定的 ID)
+    const VIDEO_ID = 'xCrsoRmPFok'; 
+    
+    // 測驗節點 (Time in seconds, question, options, answer index, and rationale)
+    const QUIZ_POINTS = [
         {
-            question: "根據影片，您在 TextEdit 中儲存 HTML 檔案時，哪一步驟是『最關鍵』的？",
-            options: [
-                "選擇字體大小為 12pt。",
-                "勾選『如果沒有提供副檔名，就使用 .txt』。",
-                "在『儲存為』欄位輸入『我的檔案』。",
-                "**取消勾選**『如果沒有提供副檔名，就使用 .txt』。"
-            ],
-            answerIndex: 3, // 正確答案是第四個選項
-            hint: "TextEdit 預設會為純文字加上 .txt 副檔名，這會讓 GitHub 讀不到正確的 HTML 檔案，因此必須取消勾選。",
+            time: 33, // 0:33
+            question: "選擇正確的動詞形式：There ____ a big clock on the wall.",
+            options: ["is", "are", "have"],
+            answerIndex: 0,
+            rationale: "主詞是 'a big clock' (單數)，所以動詞使用 'is'。",
+            answered: false
         },
         {
-            question: "如果您的 GitHub Pages 基礎網址是 `https://user.github.io/repo-name/`，而您的檔案名稱是 `final.html`，則完整的嵌入網址應為？",
-            options: [
-                "https://user.github.io/repo-name",
-                "https://user.github.io/final.html",
-                "https://user.github.io/repo-name/final.html",
-                "final.html"
-            ],
-            answerIndex: 2,
-            hint: "完整的網址是基礎網址加上檔案名稱，中間通常會自動補上斜線 (/)。",
+            time: 112, // 1:52
+            question: "填入正確的否定形式：There ____ any students in the classroom.",
+            options: ["isn't", "aren't", "not is"],
+            answerIndex: 1,
+            rationale: "主詞是 'any students' (複數)，所以否定形式使用 'aren't' (are not)。",
+            answered: false
+        },
+        {
+            time: 210, // 3:30
+            question: "選擇正確的疑問句：____ a pencil on the table?",
+            options: ["Is there", "Are there", "There is"],
+            answerIndex: 0,
+            rationale: "主詞是 'a pencil' (單數)，所以疑問句使用 'Is there'。",
+            answered: false
         }
     ];
 
-    let currentQuestionIndex = 0;
-    const quizContent = document.getElementById('quiz-content');
-    const feedbackElement = document.getElementById('feedback');
+    let player;
+    let quizInterval;
+    let currentQuizIndex = -1; // 當前彈出的題目索引
 
-    /**
-     * 渲染當前題目到頁面上
-     */
-    function renderQuestion() {
-        const q = quizData[currentQuestionIndex];
-        
-        // 建立 HTML 結構
-        quizContent.innerHTML = `
-            <div class="mb-6">
-                <p class="text-lg font-semibold text-gray-700 mb-3">
-                    ${currentQuestionIndex + 1}. ${q.question}
-                </p>
-                <div id="options-container">
-                    ${q.options.map((option, index) => `
-                        <button class="option-button" data-index="${index}" onclick="checkAnswer(${index})">
-                            ${option}
-                        </button>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-        
-        // 重置回饋訊息
-        feedbackElement.style.display = 'none';
-        feedbackElement.className = 'feedback-box';
-        feedbackElement.textContent = '';
+    // 1. 載入 YouTube IFrame Player API
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+            videoId: VIDEO_ID,
+            playerVars: {
+                // 使用 youtube-nocookie 提高嵌入相容性
+                'origin': window.location.origin, 
+                'enablejsapi': 1,
+                'rel': 0, // 不顯示相關影片
+                'controls': 1 // 顯示播放控制項
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
+            }
+        });
+        document.getElementById('loading-msg').textContent = '▶️ 影片已就緒，請點擊播放。';
+        document.getElementById('loading-msg').classList.remove('text-blue-500');
+        document.getElementById('loading-msg').classList.add('text-green-600', 'bg-green-50');
     }
 
-    /**
-     * 檢查使用者選擇的答案是否正確
-     * @param {number} selectedIndex - 使用者點擊的選項索引
-     */
-    function checkAnswer(selectedIndex) {
-        const q = quizData[currentQuestionIndex];
-        const isCorrect = selectedIndex === q.answerIndex;
-        const optionsContainer = document.getElementById('options-container');
-        const buttons = optionsContainer.querySelectorAll('.option-button');
+    // 2. 播放器準備就緒
+    function onPlayerReady(event) {
+        // 開始監測播放進度
+        quizInterval = setInterval(checkQuizPoint, 1000); // 每秒檢查一次
+    }
+
+    // 3. 監測播放狀態變化 (例如：學生手動暫停/播放)
+    function onPlayerStateChange(event) {
+        // 如果學生手動暫停，不影響測驗邏輯
+    }
+
+    // 4. 定時檢查是否到達測驗時間點
+    function checkQuizPoint() {
+        if (!player || player.getPlayerState() !== YT.PlayerState.PLAYING) {
+            return;
+        }
+
+        const currentTime = player.getCurrentTime();
+
+        for (let i = 0; i < QUIZ_POINTS.length; i++) {
+            const point = QUIZ_POINTS[i];
+            
+            // 檢查是否到達時間點且尚未回答
+            if (!point.answered && currentTime >= point.time) {
+                // 暫停影片
+                player.pauseVideo();
+                
+                // 設定當前題目索引
+                currentQuizIndex = i;
+                
+                // 顯示測驗彈窗
+                showQuiz(point);
+                
+                // 停止定時器直到測驗結束
+                clearInterval(quizInterval); 
+                return;
+            }
+        }
+    }
+
+    // 5. 顯示測驗題目彈窗
+    function showQuiz(point) {
+        document.getElementById('quiz-question').textContent = point.question;
+        
+        const optionsContainer = document.getElementById('quiz-options');
+        optionsContainer.innerHTML = ''; // 清空舊選項
+        
+        point.options.forEach((option, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn font-medium text-gray-700';
+            btn.textContent = option;
+            btn.onclick = () => checkAnswer(btn, index);
+            optionsContainer.appendChild(btn);
+        });
+
+        // 重置回饋區塊
+        document.getElementById('rationale-box').classList.add('hidden');
+        document.getElementById('continue-btn').classList.add('hidden');
+        
+        document.getElementById('quiz-overlay').style.display = 'flex';
+    }
+
+    // 6. 檢查答案
+    function checkAnswer(clickedButton, selectedIndex) {
+        const point = QUIZ_POINTS[currentQuizIndex];
+        const isCorrect = selectedIndex === point.answerIndex;
+        const allButtons = document.getElementById('quiz-options').querySelectorAll('.option-btn');
         
         // 禁用所有按鈕
-        buttons.forEach(button => {
-            button.disabled = true;
+        allButtons.forEach(btn => {
+            btn.disabled = true;
             // 標記正確答案
-            if (parseInt(button.getAttribute('data-index')) === q.answerIndex) {
-                button.classList.add('correct');
-                button.classList.remove('incorrect');
+            if (point.answerIndex === parseInt(btn.getAttribute('data-index')) || btn.textContent === point.options[point.answerIndex]) {
+                btn.classList.add('correct-answer');
             }
         });
 
         // 標記使用者選擇的答案
         if (!isCorrect) {
-            buttons[selectedIndex].classList.add('incorrect');
+            clickedButton.classList.add('incorrect-selection');
         }
 
-        // 顯示回饋訊息
-        feedbackElement.style.display = 'block';
-        if (isCorrect) {
-            feedbackElement.classList.add('feedback-correct');
-            feedbackElement.classList.remove('feedback-incorrect');
-            feedbackElement.textContent = '✅ 太棒了！回答完全正確！';
-        } else {
-            feedbackElement.classList.add('feedback-incorrect');
-            feedbackElement.classList.remove('feedback-correct');
-            feedbackElement.textContent = '❌ 答錯了，請再試一次！提示：' + q.hint;
-        }
+        // 顯示回饋和解析
+        const rationaleBox = document.getElementById('rationale-box');
+        const feedbackResult = document.getElementById('feedback-result');
+        const feedbackRationale = document.getElementById('feedback-rationale');
+        
+        feedbackResult.textContent = isCorrect ? '✅ 回答正確！' : '❌ 答錯了！';
+        feedbackRationale.textContent = point.rationale;
 
-        // 建立「下一題」按鈕
-        const nextButton = document.createElement('button');
-        nextButton.textContent = currentQuestionIndex < quizData.length - 1 ? '下一題' : '測驗完成';
-        nextButton.className = 'w-full mt-4 p-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150';
-        nextButton.onclick = nextQuestion;
-        quizContent.appendChild(nextButton);
+        rationaleBox.classList.remove('hidden');
+        rationaleBox.classList.remove(isCorrect ? 'border-red-400' : 'border-green-400');
+        rationaleBox.classList.add(isCorrect ? 'border-green-400' : 'border-red-400');
+        
+        // 顯示繼續按鈕
+        document.getElementById('continue-btn').classList.remove('hidden');
+        
+        // 標記為已回答
+        point.answered = true;
     }
 
-    /**
-     * 載入下一題或完成測驗
-     */
-    function nextQuestion() {
-        currentQuestionIndex++;
-        if (currentQuestionIndex < quizData.length) {
-            renderQuestion();
-        } else {
-            showFinalResult();
-        }
+    // 7. 繼續播放影片
+    function continueVideo() {
+        document.getElementById('quiz-overlay').style.display = 'none';
+        
+        // 繼續定時檢查
+        quizInterval = setInterval(checkQuizPoint, 1000); 
+        
+        // 繼續播放影片
+        player.playVideo();
     }
 
-    /**
-     * 顯示最終結果
-     */
-    function showFinalResult() {
-        quizContent.innerHTML = `
-            <div class="text-center py-10">
-                <p class="text-3xl font-bold text-green-600 mb-4">🎉 恭喜！測驗已完成！ 🎉</p>
-                <p class="text-lg text-gray-700">您已經成功掌握了 HTML 檔案嵌入 Google Sites 的關鍵步驟。</p>
-                <p class="text-lg text-gray-700 mt-4 font-semibold">現在，請將您的 \`quiz.html\` 檔案上傳到 GitHub 儲存庫，並使用完整的網址進行嵌入吧！</p>
-                <button onclick="currentQuestionIndex=0; renderQuestion();" class="mt-8 p-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition duration-150">
-                    重新開始測驗
-                </button>
-            </div>
-        `;
-        feedbackElement.style.display = 'none';
-    }
-
-    // 初始化測驗
-    window.onload = renderQuestion;
-
+    // 載入 YouTube IFrame Player API 腳本
+    var tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 </script>
 
 </body>
