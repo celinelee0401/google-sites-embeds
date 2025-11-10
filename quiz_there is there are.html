@@ -1,43 +1,21 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>There is/are 互動影片測驗 - 穩定版</title>
-    <!-- 載入 Tailwind CSS 確保響應式設計和美觀 -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>鑲嵌式影片測驗：There is/are (最終版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 字體設定與整體居中 */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f3f5;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            padding: 20px 10px;
-        }
-
-        /* 測驗主容器 */
-        .quiz-container {
-            max-width: 700px;
-            width: 100%;
-            background-color: white;
-            padding: 25px;
-            border-radius: 14px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-        }
-
-        /* 影片外框 (16:9 比例) */
-        .video-wrapper {
+        /* 影片 16:9 響應式容器 */
+        .video-container {
             position: relative;
-            padding-bottom: 56.25%; 
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
             height: 0;
             overflow: hidden;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            background-color: #000;
         }
-        .video-wrapper iframe {
+        .video-container iframe, .video-container #player > iframe {
             position: absolute;
             top: 0;
             left: 0;
@@ -45,242 +23,427 @@
             height: 100%;
             border: 0;
         }
-
-        /* 測驗彈窗遮罩 */
-        #quiz-overlay {
-            display: none; /* 預設隱藏 */
-            position: fixed; /* 固定在視窗上層 */
-            top: 0;
-            left: 0;
+        /* 測驗彈窗 (Modal) */
+        #quiz-modal {
+            transition: opacity 0.25s ease-in-out;
+        }
+        /* 讓 modal 內容可滾動（行動裝置） */
+        #quiz-modal-content {
+            max-height: calc(100vh - 4rem);
+            overflow: auto;
+        }
+        /* 隱藏捲軸，因為彈窗會鎖定背景 */
+        body.modal-open {
+            overflow: hidden;
+        }
+        /* 簡答題輸入框樣式 */
+        #short-answer-input {
             width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* 半透明遮罩 */
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #4B5563;
+            background-color: #F9FAFB;
+            color: #111827;
         }
-
-        /* 測驗內容區塊 */
-        .quiz-modal {
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            max-width: 90%;
-            width: 450px;
-            animation: fadeIn 0.3s ease-out;
+        #short-answer-input:focus {
+            outline: none;
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
         }
-
-        /* 答案選項按鈕 */
-        .option-btn {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            text-align: left;
-            background-color: #f9fafb;
-            transition: all 0.2s;
-        }
-        .option-btn:hover:not(:disabled) {
-            background-color: #e0f2fe;
-            border-color: #38bdf8;
-            cursor: pointer;
-        }
-        
-        /* 答題結果樣式 */
-        .correct-answer {
-            background-color: #dcfce7; /* 淺綠 */
-            border-color: #22c55e; /* 綠色邊框 */
-            font-weight: 600;
-        }
-        .incorrect-selection {
-            background-color: #fee2e2; /* 淺紅 */
-            border-color: #ef4444; /* 紅色邊框 */
-            opacity: 0.7;
-        }
-        
-        /* 動畫效果 */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        /* 行動裝置上較大按鈕點擊區 */
+        button { touch-action: manipulation; }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white font-sans antialiased">
 
-<div class="quiz-container">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-3">There is/are 互動測驗 (穩定版)</h1>
-    <p class="text-md font-semibold text-red-600 mb-4 text-center p-2 bg-red-50 rounded-lg shadow-sm">
-        ⚠️ 提醒：影片不會自動暫停，當測驗彈窗出現時，**請手動暫停影片**。
-    </p>
+    <div class="container mx-auto max-w-4xl p-4 lg:p-8">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl lg:text-4xl font-bold text-blue-600 dark:text-blue-400">
+                鑲嵌式影片測驗：There is / There are (最終修正)
+            </h1>
+            <p class="text-lg text-gray-600 dark:text-gray-300 mt-2">
+                請點擊播放影片。影片會在關鍵觀念處自動暫停，並彈出考題。
+            </p>
+        </header>
 
-    <!-- 嵌入 YouTube 影片 (最穩定的 nocookie 嵌入方式) -->
-    <div class="video-wrapper">
-        <iframe 
-            src="https://www.youtube-nocookie.com/embed/xCrsoRmPFok?rel=0&controls=1&showinfo=0&playsinline=1" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" 
-            referrerpolicy="strict-origin-when-cross-origin"
-            allowfullscreen>
-        </iframe>
-    </div>
-    
-    <div id="status-msg" class="text-center text-blue-500 mt-4 p-3 bg-blue-50 rounded-lg">
-        📽️ 請播放影片，互動測驗將在 33 秒後開始。
-    </div>
-</div>
-
-<!-- 測驗彈窗 -->
-<div id="quiz-overlay">
-    <div class="quiz-modal">
-        <div class="text-center bg-yellow-100 p-2 rounded-lg mb-4 text-sm font-semibold text-yellow-800">
-            請立即 **手動暫停** 影片！
-        </div>
-        <h3 class="text-xl font-bold text-gray-800 mb-4" id="quiz-question"></h3>
-        <div id="quiz-options">
-            <!-- 選項將由 JS 載入 -->
-        </div>
-        
-        <!-- 答案回饋與解析 -->
-        <div id="rationale-box" class="mt-4 p-3 bg-gray-100 border-l-4 border-gray-400 rounded-lg hidden">
-            <p class="font-semibold text-sm mb-1" id="feedback-result"></p>
-            <p class="text-sm text-gray-700" id="feedback-rationale"></p>
+        <!-- 影片播放器容器 - YouTube API 會插入 iframe -->
+        <div class="video-container rounded-lg shadow-xl overflow-hidden mb-6">
+            <div id="player" aria-label="教學影片播放器"></div>
         </div>
 
-        <!-- 繼續播放按鈕 -->
-        <button id="continue-btn" class="w-full mt-6 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 hidden" onclick="continueVideo()">
-            關閉測驗並繼續播放
-        </button>
+        <div id="instructions" class="text-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+            <p class="text-lg font-medium">請點擊影片上的「播放」按鈕開始學習。</p>
+        </div>
+
+        <!-- 最終反思區域 -->
+        <div id="final-reflection" class="hidden mt-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-xl text-center">
+             <h2 class="text-3xl font-semibold mb-4 text-green-600 dark:text-green-400" id="final-title">測驗完成！</h2>
+             <p class="text-2xl mb-6" id="final-score">你的總分：0 / 0</p>
+             <p class="text-lg mb-6 font-semibold text-blue-600 dark:text-blue-400" id="final-instruction">
+                請截圖此畫面，並繳交至LoiLoNote 繳交盒 『U6 there is / there are Pre-study Homework』中。
+             </p>
+             <button id="restart-btn" class="px-8 py-3 bg-green-600 text-white rounded-lg font-semibold shadow-md hover:bg-green-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
+                重新測驗
+            </button>
+        </div>
     </div>
-</div>
 
-<script>
-    // 測驗節點 (Time in milliseconds since page load to trigger quiz)
-    // 為了應對不準確性，我將時間稍微放寬，並以毫秒計算
-    const QUIZ_POINTS = [
-        {
-            // 影片時間 0:33
-            triggerTimeMs: 33000, 
-            question: "選擇正確的動詞形式：There ____ a big clock on the wall.",
-            options: ["is", "are", "have"],
-            answerIndex: 0,
-            rationale: "主詞是 'a big clock' (單數)，所以動詞使用 'is'。",
-            answered: false
-        },
-        {
-            // 影片時間 1:52 (約 112 秒)
-            triggerTimeMs: 112000, 
-            question: "填入正確的否定形式：There ____ any students in the classroom.",
-            options: ["isn't", "aren't", "not is"],
-            answerIndex: 1,
-            rationale: "主詞是 'any students' (複數)，所以否定形式使用 'aren't' (are not)。",
-            answered: false
-        },
-        {
-            // 影片時間 3:30 (約 210 秒)
-            triggerTimeMs: 210000, 
-            question: "選擇正確的疑問句：____ a pencil on the table?",
-            options: ["Is there", "Are there", "There is"],
-            answerIndex: 0,
-            rationale: "主詞是 'a pencil' (單數)，所以疑問句使用 'Is there'。",
-            answered: false
-        }
-    ];
+    <!-- 測驗彈窗 Modal (預設隱藏) -->
+    <div id="quiz-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" aria-modal="true" role="dialog" aria-labelledby="quiz-title">
+        <!-- 彈窗背景 (Overlay) -->
+        <div class="fixed inset-0 bg-black bg-opacity-75" aria-hidden="true"></div>
 
-    let startTime = Date.now();
-    let quizTimeout = []; // 儲存所有計時器 ID
-    let currentQuizIndex = -1; 
-    let quizActive = false; // 避免同時彈出多個測驗
+        <!-- 彈窗內容 -->
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-auto p-6 lg:p-8 transform transition-all duration-300 scale-95 opacity-0" id="quiz-modal-content" tabindex="-1" role="document">
+            <h2 class="text-2xl font-semibold mb-5" id="quiz-title">觀念小考</h2>
 
-    /**
-     * 初始化所有測驗計時器
-     */
-    function initQuizTimers() {
-        startTime = Date.now(); // 重設開始時間
+            <!-- 題目 -->
+            <p class="text-xl lg:text-2xl font-medium mb-6 min-h-[3rem]" id="quiz-question"></p>
 
-        QUIZ_POINTS.forEach((point, index) => {
-            // 只設定尚未回答的題目
-            if (!point.answered) {
-                const delay = point.triggerTimeMs;
+            <!-- 選項 (選擇題/是非題) -->
+            <div id="quiz-options" class="space-y-3 mb-5"></div>
 
-                const timerId = setTimeout(() => {
-                    if (!quizActive) {
-                        currentQuizIndex = index;
-                        showQuiz(point);
-                    }
-                }, delay);
+            <!-- 簡答題區域 -->
+            <div id="short-answer-area" class="hidden space-y-3 mb-5">
+                <input type="text" id="short-answer-input" placeholder="請在此輸入答案..." autocomplete="off" aria-label="簡答題答案輸入">
+                <button id="short-answer-submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow-md hover:bg-blue-700">送出答案</button>
+            </div>
 
-                quizTimeout.push(timerId);
-            }
-        });
-        
-        document.getElementById('status-msg').textContent = '✅ 互動計時器已啟動。';
-        document.getElementById('status-msg').classList.remove('text-blue-500', 'bg-blue-50');
-        document.getElementById('status-msg').classList.add('text-green-600', 'bg-green-50');
-    }
+            <!-- 回饋 -->
+            <div id="quiz-feedback" class="min-h-[3rem] mb-5">
+                <p class="text-lg font-medium" id="quiz-feedback-text"></p>
+            </div>
 
-    /**
-     * 顯示測驗題目彈窗
-     */
-    function showQuiz(point) {
-        quizActive = true;
-        
-        document.getElementById('quiz-question').textContent = point.question;
-        
+            <!-- 按鈕區 -->
+            <div class="flex justify-between items-center gap-3">
+                <div class="flex gap-3">
+                    <!-- 跳過按鈕：若學生需略過或緊急離開可用 -->
+                    <button id="skip-btn" class="px-4 py-2 bg-yellow-500 text-white rounded-lg font-semibold shadow-md hover:bg-yellow-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-400">跳過題目</button>
+                </div>
+                <div class="text-right">
+                    <button id="quiz-continue-btn" class="px-6 py-2 bg-gray-500 text-white rounded-lg font-semibold shadow-md cursor-not-allowed" disabled>
+                        繼續觀看
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 載入 YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        // ---------- 1. 測驗資料 ----------
+        const quizData = [
+            { time: 30, type: "choice", question: "There ___ a problem. (a problem 是單數)", options: ["is", "are"], correct: "is", rationale: "單數名詞前要用 is。" },
+            { time: 48, type: "choice", question: "There ___ many problems. (many problems 是複數)", options: ["is", "are"], correct: "are", rationale: "複數名詞前要用 are。" },
+            { time: 115, type: "tf", question: "[是非題] \"There are a lot of water on the floor.\" 這句話是正確的。", options: ["O (正確)", "X (錯誤)"], correct: "X (錯誤)", rationale: "water 是不可數名詞，應用 is。" },
+            { time: 125, type: "choice", question: "There ___ some juice in the fridge.", options: ["is", "are"], correct: "is", rationale: "juice 是不可數，要用 is。" },
+            { time: 239, type: "short-answer", question: "[簡答題] \"There are not\" 的縮寫 (contraction) 是什麼？", correct: "aren't", rationale: "縮寫是 aren't。" },
+            { time: 295, type: "choice", question: "(Negative) There ___ any pens on the table.", options: ["isn't", "aren't", "is", "are"], correct: "aren't", rationale: "pens 是複數，否定用 aren't。" },
+            { time: 348, type: "choice", question: "(Negative) There ___ any snow in Jamaica.", options: ["isn't", "aren't"], correct: "isn't", rationale: "snow 是不可數，否定用 isn't。" },
+            { time: 418, type: "short-answer", question: "[簡答題] 請將 \"There are some books.\" 改為疑問句。", correct: "Are there any books?", rationale: "疑問句要把 are 放句首，some 改 any。" },
+            { time: 453, type: "tf", question: "[是非題] A: \"Are there any books?\" B: \"Yes, there is.\" 這樣的回答是正確的。", options: ["O (正確)", "X (錯誤)"], correct: "X (錯誤)", rationale: "回答是複數，應為 'Yes, there are.'。" },
+            { time: 505, type: "voice-prompt", question: "[口說練習] 想像你在看一張圖片，請大聲說出並寫在講義上：「照片中有多少張桌子？」", options: ["我完成了"], correct: "我完成了", rationale: "口說練習示意。請同時大聲說並完成講義填寫。" }
+        ];
+
+        const totalScorableQuestions = quizData.filter(q => q.type !== 'voice-prompt').length;
+        let score = 0;
+        let player;
+        let timeCheckInterval;
+        let currentQuizIndex = 0;
+        let quizTriggered = new Array(quizData.length).fill(false);
+
+        // DOM elements
+        const modal = document.getElementById('quiz-modal');
+        const modalContent = document.getElementById('quiz-modal-content');
+        const questionText = document.getElementById('quiz-question');
         const optionsContainer = document.getElementById('quiz-options');
-        optionsContainer.innerHTML = ''; // 清空舊選項
-        
-        point.options.forEach((option, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'option-btn font-medium text-gray-700';
-            btn.textContent = option;
-            btn.onclick = () => checkAnswer(btn, index);
-            optionsContainer.appendChild(btn);
-        });
+        const feedbackText = document.getElementById('quiz-feedback-text');
+        const continueBtn = document.getElementById('quiz-continue-btn');
+        const instructions = document.getElementById('instructions');
+        const finalReflection = document.getElementById('final-reflection');
+        const finalScoreText = document.getElementById('final-score');
+        const finalInstructionText = document.getElementById('final-instruction');
+        const restartBtn = document.getElementById('restart-btn');
+        const shortAnswerArea = document.getElementById('short-answer-area');
+        let shortAnswerInput = document.getElementById('short-answer-input');
+        let shortAnswerSubmit = document.getElementById('short-answer-submit');
+        const skipBtn = document.getElementById('skip-btn');
 
-        // 重置回饋區塊
-        document.getElementById('rationale-box').classList.add('hidden');
-        document.getElementById('continue-btn').classList.add('hidden');
-        
-        document.getElementById('quiz-overlay').style.display = 'flex';
-        
-        // 清除所有未來的測驗計時器，直到學生回答完畢
-        clearAllTimeouts();
-    }
-    
-    /**
-     * 清除所有未觸發的計時器
-     */
-    function clearAllTimeouts() {
-        quizTimeout.forEach(id => clearTimeout(id));
-        quizTimeout = [];
-    }
-
-
-    /**
-     * 檢查答案
-     */
-    function checkAnswer(clickedButton, selectedIndex) {
-        const point = QUIZ_POINTS[currentQuizIndex];
-        const isCorrect = selectedIndex === point.answerIndex;
-        const allButtons = document.getElementById('quiz-options').querySelectorAll('.option-btn');
-        
-        // 禁用所有按鈕並標記結果
-        allButtons.forEach(btn => {
-            btn.disabled = true;
-            if (point.options.indexOf(btn.textContent) === point.answerIndex) {
-                btn.classList.add('correct-answer');
-            }
-        });
-
-        if (!isCorrect) {
-            clickedButton.classList.add('incorrect-selection');
+        // ---------- 2. YouTube API & Player ----------
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '390',
+                width: '640',
+                videoId: 'xCrsoRmPFok', // <-- 如果換影片，請在此修改 ID
+                playerVars: {
+                    playsinline: 1,
+                    rel: 0,
+                    enablejsapi: 1,
+                    modestbranding: 1
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
         }
 
-        // 顯示回饋和解析
-        const rationaleBox = document.getElementById('rationale-box');
-        const feedbackResult = document.getElementById('feedback-result');
-        const feedbackRationale = document.getElementById('feedback-rationale');
-        
-        feedbackResult.textContent = isCorrect ? '✅ 回答正確！' : '❌ 答錯了！';
-        feedbackRationale.textContent = point.rationale;
+        function onPlayerReady(event) {
+            try {
+                const iframe = event.target.getIframe();
+                // 強化 iframe 權限（有助跨瀏覽器、行動裝置）
+                iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen; microphone; clipboard-write');
+                iframe.setAttribute('allowfullscreen', '');
+
+                // 若 iframe src 未包含 origin，補上當前 origin（可改善某些跨域驗證情況）
+                const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+                if (iframe.src && !iframe.src.includes('origin=')) {
+                    iframe.src = iframe.src + (iframe.src.includes('?') ? '&' : '?') + 'origin=' + encodeURIComponent(origin);
+                }
+            } catch (e) {
+                console.warn('onPlayerReady: 無法設定 iframe 屬性', e);
+            }
+        }
+
+        // ---------- 3. 播放器狀態監聽 ----------
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.PLAYING) {
+                instructions.classList.add('hidden');
+                finalReflection.classList.add('hidden');
+                startTimerCheck();
+            } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+                stopTimerCheck();
+            }
+            if (event.data === YT.PlayerState.ENDED) {
+                showFinalReflection();
+            }
+        }
+
+        // ---------- 4. 檢查影片時間與觸發測驗 ----------
+        function startTimerCheck() {
+            if (timeCheckInterval) return;
+            timeCheckInterval = setInterval(checkVideoTime, 500);
+        }
+        function stopTimerCheck() {
+            clearInterval(timeCheckInterval);
+            timeCheckInterval = null;
+        }
+        function checkVideoTime() {
+            if (!player || typeof player.getCurrentTime !== 'function') return;
+            if (currentQuizIndex >= quizData.length) return;
+            const currentTime = player.getCurrentTime();
+            const activeQuiz = quizData[currentQuizIndex];
+            if (currentTime >= activeQuiz.time && !quizTriggered[currentQuizIndex]) {
+                quizTriggered[currentQuizIndex] = true;
+                player.pauseVideo();
+                showQuizModal(activeQuiz);
+            }
+        }
+
+        // ---------- 5. 顯示測驗彈窗 ----------
+        function showQuizModal(quiz) {
+            document.body.classList.add('modal-open');
+            questionText.textContent = quiz.question;
+            optionsContainer.innerHTML = '';
+            feedbackText.textContent = '';
+            feedbackText.className = 'text-lg font-medium';
+            continueBtn.disabled = true;
+            continueBtn.className = "px-6 py-2 bg-gray-500 text-white rounded-lg font-semibold shadow-md cursor-not-allowed";
+
+            // 根據題型顯示不同介面
+            if (quiz.type === 'choice' || quiz.type === 'tf' || quiz.type === 'voice-prompt') {
+                shortAnswerArea.classList.add('hidden');
+                optionsContainer.classList.remove('hidden');
+
+                quiz.options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.className = "w-full text-left px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500";
+                    button.onclick = () => handleChoiceAnswer(button, option, quiz);
+                    optionsContainer.appendChild(button);
+                });
+
+            } else if (quiz.type === 'short-answer') {
+                optionsContainer.classList.add('hidden');
+                shortAnswerArea.classList.remove('hidden');
+                shortAnswerInput = document.getElementById('short-answer-input');
+                shortAnswerInput.value = '';
+
+                // 綁定 submit
+                shortAnswerSubmit.onclick = null;
+                shortAnswerSubmit.onclick = () => handleShortAnswer(quiz);
+                shortAnswerInput.onkeydown = null;
+                shortAnswerInput.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        handleShortAnswer(quiz);
+                    }
+                };
+            }
+
+            // 顯示彈窗（動畫）並 focus 到 modal content
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.add('opacity-100');
+                modalContent.classList.add('scale-100', 'opacity-100');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                try { modalContent.focus(); } catch (e) {}
+            }, 10);
+        }
+
+        // ---------- 6a. 選擇題處理 ----------
+        function handleChoiceAnswer(button, selectedOption, quiz) {
+            const allOptions = optionsContainer.querySelectorAll('button');
+            allOptions.forEach(btn => btn.disabled = true);
+
+            let isCorrect = (selectedOption === quiz.correct);
+
+            if (isCorrect) {
+                feedbackText.textContent = `答對了！${quiz.rationale}`;
+                feedbackText.classList.add('text-green-600', 'dark:text-green-400');
+                button.classList.add('bg-green-100', 'dark:bg-green-900', 'border-green-500');
+                if (quiz.type !== 'voice-prompt') {
+                    score++;
+                }
+            } else {
+                feedbackText.textContent = `不對喔。正確答案為「${quiz.correct}」。文法解釋：${quiz.rationale}`;
+                feedbackText.classList.add('text-red-600', 'dark:text-red-400');
+                button.classList.add('bg-red-100', 'dark:bg-red-900', 'border-red-500');
+
+                allOptions.forEach(btn => {
+                    if (btn.textContent === quiz.correct) {
+                        btn.classList.add('bg-green-100', 'dark:bg-green-900', 'border-green-500');
+                    }
+                });
+            }
+
+            enableContinueButton();
+        }
+
+        // ---------- 6b. 簡答題處理 ----------
+        function handleShortAnswer(quiz) {
+            const userAnswer = shortAnswerInput.value.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.!?]/g, '');
+            const correctAnswer = quiz.correct.toLowerCase().replace(/[.!?]/g, '');
+            let isCorrect = false;
+
+            if (quiz.question.includes("\"There are not\" 的縮寫")) {
+                isCorrect = (userAnswer === "aren't" || userAnswer === "arent" || userAnswer === "are not" || userAnswer.includes("there aren't") || userAnswer.includes("there are not"));
+            } else if (quiz.question.includes("改為疑問句")) {
+                isCorrect = (userAnswer.includes("are there any") && userAnswer.includes("books"));
+            } else {
+                isCorrect = (userAnswer === correctAnswer);
+            }
+
+            shortAnswerInput.disabled = true;
+            shortAnswerSubmit.disabled = true;
+
+            if (isCorrect) {
+                score++;
+                let successMessage = quiz.question.includes("改為疑問句")
+                    ? `答對了！很好，你記得要將 is/are 移到句首，並將 some 改為 any！文法解釋：${quiz.rationale}`
+                    : `答對了！${quiz.rationale}`;
+                feedbackText.textContent = successMessage;
+                feedbackText.classList.add('text-green-600', 'dark:text-green-400');
+                shortAnswerInput.classList.add('border-green-500');
+            } else {
+                let errorMessage = quiz.question.includes("改為疑問句")
+                    ? `不對喔。正確答案為「${quiz.correct}」。請記得把 is/are 移到句首，且 some → any。`
+                    : `不對喔。正確答案為「${quiz.correct}」。${quiz.rationale}`;
+                feedbackText.textContent = errorMessage;
+                feedbackText.classList.add('text-red-600', 'dark:text-red-400');
+                shortAnswerInput.classList.add('border-red-500');
+            }
+
+            enableContinueButton();
+        }
+
+        // ---------- 6c. 啟用繼續按鈕 ----------
+        function enableContinueButton() {
+            continueBtn.disabled = false;
+            continueBtn.className = "px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50";
+        }
+
+        // ---------- 7. 關閉彈窗並繼續播放 ----------
+        function continueVideo() {
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+
+                // 重置簡答題狀態
+                try {
+                    shortAnswerInput.disabled = false;
+                    shortAnswerSubmit.disabled = false;
+                    shortAnswerInput.classList.remove('border-green-500', 'border-red-500');
+                } catch (e) {}
+
+                currentQuizIndex++;
+
+                if (currentQuizIndex < quizData.length) {
+                    // 小延遲避免 race condition
+                    setTimeout(() => {
+                        try { player.playVideo(); } catch (e) {}
+                    }, 150);
+                } else {
+                    showFinalReflection();
+                }
+            }, 250);
+        }
+
+        // ---------- 8. 跳過題目（Skip） ----------
+        function skipQuestion() {
+            // 不計分，直接前進
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+                currentQuizIndex++;
+                if (currentQuizIndex < quizData.length) {
+                    setTimeout(() => { try { player.playVideo(); } catch (e) {} }, 150);
+                } else {
+                    showFinalReflection();
+                }
+            }, 250);
+        }
+        skipBtn.addEventListener('click', skipQuestion);
+
+        // ---------- 9. 顯示最終反思 ----------
+        function showFinalReflection() {
+            stopTimerCheck();
+            instructions.classList.add('hidden');
+            finalReflection.classList.remove('hidden');
+            finalScoreText.textContent = `你的總分：${score} / ${totalScorableQuestions}`;
+            finalInstructionText.textContent = "請截圖此畫面，並繳交至LoiLoNote 繳交盒 『U6 there is / there are Pre-study Homework』中。";
+        }
+
+        // ---------- 10. 重新測驗 ----------
+        function restartQuiz() {
+            score = 0;
+            currentQuizIndex = 0;
+            quizTriggered.fill(false);
+            finalReflection.classList.add('hidden');
+            instructions.classList.remove('hidden');
+            try {
+                player.seekTo(0);
+                player.playVideo();
+            } catch (e) {}
+        }
+        continueBtn.addEventListener('click', continueVideo);
+        restartBtn.addEventListener('click', restartQuiz);
+
+        // Optional: keyboard shortcut Esc to skip modal (方便老師示範時使用)
+        document.addEventListener('keydown', (e) => {
+            if (!modal.classList.contains('hidden') && e.key === 'Escape') {
+                // 當 modal 顯示時，Esc 觸發跳過（避免學生誤用，此行為可移除）
+                skipQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
