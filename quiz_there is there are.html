@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>There is/are 互動影片測驗</title>
+    <title>There is/are 互動影片測驗 - 穩定版</title>
     <!-- 載入 Tailwind CSS 確保響應式設計和美觀 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -13,7 +13,7 @@
             background-color: #f0f3f5;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* 讓內容靠上 */
+            align-items: flex-start;
             min-height: 100vh;
             padding: 20px 10px;
         }
@@ -37,12 +37,13 @@
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
-        #player {
+        .video-wrapper iframe {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            border: 0;
         }
 
         /* 測驗彈窗遮罩 */
@@ -53,7 +54,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.6); /* 半透明遮罩 */
+            background-color: rgba(0, 0, 0, 0.7); /* 半透明遮罩 */
             z-index: 1000;
             justify-content: center;
             align-items: center;
@@ -109,23 +110,32 @@
 <body>
 
 <div class="quiz-container">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-3">There is/are 互動測驗 (最終版)</h1>
-    <p class="text-sm text-gray-500 mb-6 text-center">影片將在關鍵語法點自動暫停，請回答問題以繼續。</p>
+    <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-3">There is/are 互動測驗 (穩定版)</h1>
+    <p class="text-md font-semibold text-red-600 mb-4 text-center p-2 bg-red-50 rounded-lg shadow-sm">
+        ⚠️ 提醒：影片不會自動暫停，當測驗彈窗出現時，**請手動暫停影片**。
+    </p>
 
-    <!-- YouTube Player 容器 -->
+    <!-- 嵌入 YouTube 影片 (最穩定的 nocookie 嵌入方式) -->
     <div class="video-wrapper">
-        <div id="player"></div>
+        <iframe 
+            src="https://www.youtube-nocookie.com/embed/xCrsoRmPFok?rel=0&controls=1&showinfo=0&playsinline=1" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" 
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen>
+        </iframe>
     </div>
-
-    <!-- 影片載入中提示 -->
-    <div id="loading-msg" class="text-center text-blue-500 mt-4 p-3 bg-blue-50 rounded-lg">
-        🎬 影片載入中，請稍候...
+    
+    <div id="status-msg" class="text-center text-blue-500 mt-4 p-3 bg-blue-50 rounded-lg">
+        📽️ 請播放影片，互動測驗將在 33 秒後開始。
     </div>
 </div>
 
 <!-- 測驗彈窗 -->
 <div id="quiz-overlay">
     <div class="quiz-modal">
+        <div class="text-center bg-yellow-100 p-2 rounded-lg mb-4 text-sm font-semibold text-yellow-800">
+            請立即 **手動暫停** 影片！
+        </div>
         <h3 class="text-xl font-bold text-gray-800 mb-4" id="quiz-question"></h3>
         <div id="quiz-options">
             <!-- 選項將由 JS 載入 -->
@@ -139,19 +149,18 @@
 
         <!-- 繼續播放按鈕 -->
         <button id="continue-btn" class="w-full mt-6 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 hidden" onclick="continueVideo()">
-            繼續播放影片
+            關閉測驗並繼續播放
         </button>
     </div>
 </div>
 
 <script>
-    // YouTube 影片 ID (您指定的 ID)
-    const VIDEO_ID = 'xCrsoRmPFok'; 
-    
-    // 測驗節點 (Time in seconds, question, options, answer index, and rationale)
+    // 測驗節點 (Time in milliseconds since page load to trigger quiz)
+    // 為了應對不準確性，我將時間稍微放寬，並以毫秒計算
     const QUIZ_POINTS = [
         {
-            time: 33, // 0:33
+            // 影片時間 0:33
+            triggerTimeMs: 33000, 
             question: "選擇正確的動詞形式：There ____ a big clock on the wall.",
             options: ["is", "are", "have"],
             answerIndex: 0,
@@ -159,7 +168,8 @@
             answered: false
         },
         {
-            time: 112, // 1:52
+            // 影片時間 1:52 (約 112 秒)
+            triggerTimeMs: 112000, 
             question: "填入正確的否定形式：There ____ any students in the classroom.",
             options: ["isn't", "aren't", "not is"],
             answerIndex: 1,
@@ -167,7 +177,8 @@
             answered: false
         },
         {
-            time: 210, // 3:30
+            // 影片時間 3:30 (約 210 秒)
+            triggerTimeMs: 210000, 
             question: "選擇正確的疑問句：____ a pencil on the table?",
             options: ["Is there", "Are there", "There is"],
             answerIndex: 0,
@@ -176,73 +187,44 @@
         }
     ];
 
-    let player;
-    let quizInterval;
-    let currentQuizIndex = -1; // 當前彈出的題目索引
+    let startTime = Date.now();
+    let quizTimeout = []; // 儲存所有計時器 ID
+    let currentQuizIndex = -1; 
+    let quizActive = false; // 避免同時彈出多個測驗
 
-    // 1. 載入 YouTube IFrame Player API
-    function onYouTubeIframeAPIReady() {
-        player = new YT.Player('player', {
-            videoId: VIDEO_ID,
-            playerVars: {
-                // 使用 youtube-nocookie 提高嵌入相容性
-                'origin': window.location.origin, 
-                'enablejsapi': 1,
-                'rel': 0, // 不顯示相關影片
-                'controls': 1 // 顯示播放控制項
-            },
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange
+    /**
+     * 初始化所有測驗計時器
+     */
+    function initQuizTimers() {
+        startTime = Date.now(); // 重設開始時間
+
+        QUIZ_POINTS.forEach((point, index) => {
+            // 只設定尚未回答的題目
+            if (!point.answered) {
+                const delay = point.triggerTimeMs;
+
+                const timerId = setTimeout(() => {
+                    if (!quizActive) {
+                        currentQuizIndex = index;
+                        showQuiz(point);
+                    }
+                }, delay);
+
+                quizTimeout.push(timerId);
             }
         });
-        document.getElementById('loading-msg').textContent = '▶️ 影片已就緒，請點擊播放。';
-        document.getElementById('loading-msg').classList.remove('text-blue-500');
-        document.getElementById('loading-msg').classList.add('text-green-600', 'bg-green-50');
+        
+        document.getElementById('status-msg').textContent = '✅ 互動計時器已啟動。';
+        document.getElementById('status-msg').classList.remove('text-blue-500', 'bg-blue-50');
+        document.getElementById('status-msg').classList.add('text-green-600', 'bg-green-50');
     }
 
-    // 2. 播放器準備就緒
-    function onPlayerReady(event) {
-        // 開始監測播放進度
-        quizInterval = setInterval(checkQuizPoint, 1000); // 每秒檢查一次
-    }
-
-    // 3. 監測播放狀態變化 (例如：學生手動暫停/播放)
-    function onPlayerStateChange(event) {
-        // 如果學生手動暫停，不影響測驗邏輯
-    }
-
-    // 4. 定時檢查是否到達測驗時間點
-    function checkQuizPoint() {
-        if (!player || player.getPlayerState() !== YT.PlayerState.PLAYING) {
-            return;
-        }
-
-        const currentTime = player.getCurrentTime();
-
-        for (let i = 0; i < QUIZ_POINTS.length; i++) {
-            const point = QUIZ_POINTS[i];
-            
-            // 檢查是否到達時間點且尚未回答
-            if (!point.answered && currentTime >= point.time) {
-                // 暫停影片
-                player.pauseVideo();
-                
-                // 設定當前題目索引
-                currentQuizIndex = i;
-                
-                // 顯示測驗彈窗
-                showQuiz(point);
-                
-                // 停止定時器直到測驗結束
-                clearInterval(quizInterval); 
-                return;
-            }
-        }
-    }
-
-    // 5. 顯示測驗題目彈窗
+    /**
+     * 顯示測驗題目彈窗
+     */
     function showQuiz(point) {
+        quizActive = true;
+        
         document.getElementById('quiz-question').textContent = point.question;
         
         const optionsContainer = document.getElementById('quiz-options');
@@ -261,24 +243,36 @@
         document.getElementById('continue-btn').classList.add('hidden');
         
         document.getElementById('quiz-overlay').style.display = 'flex';
+        
+        // 清除所有未來的測驗計時器，直到學生回答完畢
+        clearAllTimeouts();
+    }
+    
+    /**
+     * 清除所有未觸發的計時器
+     */
+    function clearAllTimeouts() {
+        quizTimeout.forEach(id => clearTimeout(id));
+        quizTimeout = [];
     }
 
-    // 6. 檢查答案
+
+    /**
+     * 檢查答案
+     */
     function checkAnswer(clickedButton, selectedIndex) {
         const point = QUIZ_POINTS[currentQuizIndex];
         const isCorrect = selectedIndex === point.answerIndex;
         const allButtons = document.getElementById('quiz-options').querySelectorAll('.option-btn');
         
-        // 禁用所有按鈕
+        // 禁用所有按鈕並標記結果
         allButtons.forEach(btn => {
             btn.disabled = true;
-            // 標記正確答案
-            if (point.answerIndex === parseInt(btn.getAttribute('data-index')) || btn.textContent === point.options[point.answerIndex]) {
+            if (point.options.indexOf(btn.textContent) === point.answerIndex) {
                 btn.classList.add('correct-answer');
             }
         });
 
-        // 標記使用者選擇的答案
         if (!isCorrect) {
             clickedButton.classList.add('incorrect-selection');
         }
@@ -290,35 +284,3 @@
         
         feedbackResult.textContent = isCorrect ? '✅ 回答正確！' : '❌ 答錯了！';
         feedbackRationale.textContent = point.rationale;
-
-        rationaleBox.classList.remove('hidden');
-        rationaleBox.classList.remove(isCorrect ? 'border-red-400' : 'border-green-400');
-        rationaleBox.classList.add(isCorrect ? 'border-green-400' : 'border-red-400');
-        
-        // 顯示繼續按鈕
-        document.getElementById('continue-btn').classList.remove('hidden');
-        
-        // 標記為已回答
-        point.answered = true;
-    }
-
-    // 7. 繼續播放影片
-    function continueVideo() {
-        document.getElementById('quiz-overlay').style.display = 'none';
-        
-        // 繼續定時檢查
-        quizInterval = setInterval(checkQuizPoint, 1000); 
-        
-        // 繼續播放影片
-        player.playVideo();
-    }
-
-    // 載入 YouTube IFrame Player API 腳本
-    var tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    var firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-</script>
-
-</body>
-</html>
