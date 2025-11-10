@@ -111,10 +111,11 @@
 
     <!-- 嵌入 YouTube 影片 -->
     <div class="video-wrapper">
-        <!-- **請替換此處的 YouTube 影片 ID** -->
+        <!-- **** 修正處：將 youtube.com 改為 youtube-nocookie.com 以提高嵌入相容性 **** -->
         <iframe 
-            src="https://www.youtube.com/embed/5qap5aO42Jc" 
+            src="https://www.youtube-nocookie.com/embed/5qap5aO42Jc" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            referrerpolicy="strict-origin-when-cross-origin"
             allowfullscreen>
         </iframe>
     </div>
@@ -252,7 +253,7 @@
             <div class="text-center py-10">
                 <p class="text-3xl font-bold text-green-600 mb-4">🎉 恭喜！測驗已完成！ 🎉</p>
                 <p class="text-lg text-gray-700">您已經成功掌握了 HTML 檔案嵌入 Google Sites 的關鍵步驟。</p>
-                <p class="text-lg text-gray-700 mt-4 font-semibold">現在，請將您的 `quiz.html` 檔案上傳到 GitHub 儲存庫，並使用完整的網址進行嵌入吧！</p>
+                <p class="text-lg text-gray-700 mt-4 font-semibold">現在，請將您的 \`quiz.html\` 檔案上傳到 GitHub 儲存庫，並使用完整的網址進行嵌入吧！</p>
                 <button onclick="currentQuestionIndex=0; renderQuestion();" class="mt-8 p-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition duration-150">
                     重新開始測驗
                 </button>
